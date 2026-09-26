@@ -1,0 +1,18 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "provider": "dotnet",
+  "packages": {
+    "dotnet": "10.0"
+  },
+  "steps": {
+    "install": {
+      "commands": ["dotnet --version"]
+    },
+    "build": {
+      "commands": ["dotnet publish src/Tracking.Api/Tracking.Api.csproj -c Release -o out"]
+    }
+  },
+  "deploy": {
+    "startCommand": "./out/Tracking.Api"
+  }
+}
