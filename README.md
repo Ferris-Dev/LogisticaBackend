@@ -20,9 +20,9 @@ backend/
 │   ├── Tracking.Domain          entidades, enum EstadoPaquete, regla last-write-wins, excepciones
 │   └── Tracking.Infrastructure  EF Core + Npgsql, repositorios, migraciones, DatabaseConfig
 ├── tests/Tracking.Tests         xUnit (servicios, dominio, contrato HTTP)
-├── railpack.json                cómo compila y arranca Railway la API
-├── railway.json                 healthcheck y política de reinicio en Railway
 └── .env.example                 referencia de variables de entorno
+Dockerfile                       imagen de la API; Railway la compila desde la raíz del repo
+railway.json                     builder Dockerfile, healthcheck y política de reinicio en Railway
 ```
 
 ### Requisitos
@@ -109,14 +109,13 @@ Todas están documentadas en [backend/.env.example](backend/.env.example). El re
 ## Despliegue en Railway
 
 1. **New Project → Deploy from GitHub repo** y elegir este repositorio.
-2. En el servicio de la API, **Settings**:
-   - **Root Directory** = `/backend`
-   - **Config-as-code → Railway Config File** = `/backend/railway.json`. Railway no busca este archivo dentro del Root Directory, así que hay que indicar la ruta.
-3. En el proyecto: **Add → Database → PostgreSQL**.
-4. En el servicio de la API, en **Variables**, agregar `DATABASE_URL = ${{Postgres.DATABASE_URL}}`. `PORT` lo inyecta Railway. `RUN_MIGRATIONS` y `ENABLE_SWAGGER` valen `true` por defecto.
-5. **Settings → Networking → Generate Domain**.
-6. Verificar `https://<dominio>/health` y `https://<dominio>/swagger`.
+2. En el proyecto: **Add → Database → PostgreSQL**.
+3. En el servicio de la API, en **Variables**, agregar `DATABASE_URL = ${{Postgres.DATABASE_URL}}`. `PORT` lo inyecta Railway. `RUN_MIGRATIONS` y `ENABLE_SWAGGER` valen `true` por defecto.
+4. **Settings → Networking → Generate Domain** (puerto 8080).
+5. Verificar `https://<dominio>/health` y `https://<dominio>/swagger`.
 
-**Cómo se compila.** Railway usa Railpack, su sistema de compilación automático, sin Docker. Railpack detecta .NET cuando hay un `.csproj` en la carpeta raíz, pero aquí los proyectos están en `src/`. Por eso `backend/railpack.json` le indica tres cosas: usar .NET 10, compilar con `dotnet publish src/Tracking.Api/Tracking.Api.csproj -c Release -o out` y arrancar con `./out/Tracking.Api`.
+No hay que configurar **Root Directory** ni **Railway Config File**: deben quedar vacíos.
+
+**Cómo se compila.** Railway encuentra `railway.json` y `Dockerfile` en la raíz del repositorio. El Dockerfile compila con la imagen del SDK de .NET 10 (`dotnet publish backend/src/Tracking.Api/...`) y ejecuta la API sobre la imagen `aspnet:10.0`. Solo se redespliega cuando cambian `backend/src/`, el `Dockerfile` o `railway.json`.
 
 En el primer arranque se aplican las migraciones y se cargan los datos de prueba. El healthcheck de Railway (`/health`, 120 s) espera a que la API y la base de datos respondan. Railway termina TLS en su proxy: la API recibe HTTP y respeta las cabeceras `X-Forwarded-*`. Por eso no se usa `UseHttpsRedirection`.
